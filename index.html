@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Syndicat</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 16 16%27%3E%3Crect width=%2716%27 height=%2716%27 fill=%27%23f3efe6%27/%3E%3Crect x=%273%27 y=%277%27 width=%2710%27 height=%272%27 fill=%27%231c1b18%27/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app" class="act-1">
+    <main id="left" aria-label="Production">
+      <header class="counter">
+        <div class="pieces"><span id="pieces" class="num">0</span> <span class="unit">pièces</span></div>
+        <div class="rate"><span id="rate" class="num">0</span> par seconde
+          <span id="rendement-info" class="info" hidden></span>
+        </div>
+      </header>
+
+      <button id="etabli" class="etabli" type="button">
+        <span class="etabli-name">Établi</span>
+        <span class="etabli-effect" id="etabli-effect">+1 pièce par clic</span>
+      </button>
+
+      <section id="generators" class="generators" aria-label="Générateurs"></section>
+
+      <section class="chart-wrap" aria-label="Courbe de production">
+        <canvas id="chart" width="600" height="120"></canvas>
+        <div class="chart-label">pièces par seconde, vingt dernières minutes</div>
+      </section>
+
+      <div id="meeting" class="meeting" hidden>
+        <div class="meeting-title">En réunion</div>
+        <div id="meeting-text"></div>
+      </div>
+    </main>
+
+    <aside id="right" aria-label="Atelier">
+      <div id="social" hidden>
+        <section class="gauges">
+          <div class="gauge-row">
+            <div class="gauge-head"><span class="gauge-name">Rapport</span> <span id="r-num" class="num">80</span></div>
+            <div class="gauge"><div id="r-bar" class="gauge-bar"></div><div class="gauge-mark" style="left:35%"></div><div class="gauge-mark" style="left:65%"></div></div>
+            <div id="r-band" class="gauge-band">L'atelier tourne</div>
+          </div>
+          <div class="gauge-row small">
+            <div class="gauge-head"><span class="gauge-name">Tension</span> <span id="t-num" class="num">0</span></div>
+            <div class="gauge"><div id="t-bar" class="gauge-bar"></div></div>
+          </div>
+        </section>
+
+        <div id="rumor" class="rumor" hidden></div>
+
+        <section id="claim" class="claim" hidden></section>
+
+        <section class="journal-wrap">
+          <h2 class="journal-title">Journal</h2>
+          <ol id="journal" class="journal"></ol>
+        </section>
+      </div>
+    </aside>
+
+    <footer id="band" class="band">
+      <span id="pop" class="num">1</span> <span id="pop-label">ouvrier</span>
+      <span class="band-side">
+        <button id="reset" class="link" type="button">Nouvelle partie</button>
+      </span>
+    </footer>
+  </div>
+
+  <dialog id="report">
+    <h2>Compte rendu</h2>
+    <ol id="report-lines"></ol>
+    <form method="dialog"><button type="submit">Reprendre</button></form>
+  </dialog>
+
+  <div id="debug" class="debug" hidden></div>
+
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>
