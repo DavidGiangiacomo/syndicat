@@ -93,8 +93,38 @@ test('La Cadence : ×1,3 contre −4 de Rapport, et la mesure d\'hésitation', (
   assert.ok(Math.abs(E.productionPerSec(s) / before - 1.3) < 1e-9);
   assert.ok(Math.abs(E.R(s) - (C.R_BASE - 4)) < 1e-9);
   const h = E.hesitation(s);
-  assert.ok(Math.abs(h.seconds - 21) < 0.2, `hésitation mesurée : ${h.seconds}`);
-  assert.equal(h.hoverCount, 1);
+  assert.ok(Math.abs(h.cadence.seconds - 21) < 0.2, `hésitation mesurée : ${h.cadence.seconds}`);
+  assert.equal(h.cadence.hoverCount, 1);
+  E.markCadenceHover(s);
+  assert.equal(E.hesitation(s).cadence.hoverCount, 1, 'les survols après le premier achat ne comptent pas');
+  // Le témoin : l'Atelier, abordable au même moment, sans coût moral
+  assert.ok(Math.abs(h.atelier.affordableAt - 0.1) < 1e-9);
+  assert.equal(h.atelier.seconds, null);
+  run(s, 5);
+  E.buy(s, 'atelier');
+  assert.ok(Math.abs(E.hesitation(s).atelier.seconds - 26) < 0.2);
+});
+
+test('La revendication de Sabine arrive en réaction à la deuxième Cadence, dans les deux minutes', () => {
+  const s = E.createState(13);
+  s.n = 600; s.threshold = { stage: 4, at: 0 }; s.act = 2; s.pieces = 1e6;
+  E.buy(s, 'cadence');
+  assert.equal(s.claims.forced, null);
+  E.buy(s, 'cadence');
+  assert.equal(s.claims.forced?.id, 'cadence');
+  assert.ok(s.claims.forced.at >= s.t + C.CADENCE_CLAIM_DELAY[0] && s.claims.forced.at <= s.t + C.CADENCE_CLAIM_DELAY[1]);
+  // une autre revendication occupe la table : Sabine attend qu'elle soit libre
+  s.claims.current = { id: 'pause', arrivedAt: s.t, dossierRead: false };
+  run(s, 130);
+  assert.equal(s.claims.current.id, 'pause');
+  E.answerClaim(s, 'ceder');
+  run(s, 1);
+  assert.equal(s.claims.current?.id, 'cadence');
+  assert.equal(s.claims.forced, null);
+  // jamais deux fois : une troisième Cadence ne la reprogramme pas
+  E.answerClaim(s, 'refuser');
+  E.buy(s, 'cadence');
+  assert.equal(s.claims.forced, null);
 });
 
 test('Revendications : céder coûte du rendement pour toujours ; refuser se paie en Tension', () => {

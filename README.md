@@ -28,17 +28,19 @@ Les modules ES ne se chargent pas en `file://` : il faut le petit serveur (`tool
 
 > Est-ce que le joueur hésite avant d'acheter la première Cadence ? Pas s'il refuse — s'il **hésite**.
 
-Le prototype mesure ce temps. Dans `?debug`, la ligne `hésitation` donne :
+Le prototype mesure ce temps. Le panneau `?debug` (déplaçable par sa barre, repliable, position mémorisée) affiche :
 
-| champ | sens |
+| ligne | sens |
 |---|---|
-| `unlockedAt` | la Cadence apparaît (changement de libellé) |
-| `affordableAt` | le joueur a de quoi l'acheter |
-| `firstHoverAt`, `hoverCount` | il a survolé la ligne (lu la description) |
-| `firstBuyAt` | premier achat |
-| `seconds` | **temps d'hésitation** : abordable → premier achat |
+| abordable → 1er survol | le joueur est allé lire la ligne de la Cadence |
+| survols avant achat | combien de fois, avant de se décider |
+| abordable → 1er achat | **temps d'hésitation** |
+| témoin Atelier | le même délai pour l'Atelier, débloqué au même instant sans coût de Rapport. Si la Cadence attend 30 s et l'Atelier 3 s, l'hésitation est réelle ; si les deux attendent, c'était la lecture du nouveau panneau |
+| Décisions | pour chaque revendication, la réponse et le temps mis à répondre |
 
-Les mêmes valeurs sont dans la sauvegarde (`localStorage`, clé `syndicat.save.v1`, champ `metrics`), avec le procès-verbal complet des décisions (`decisions`). Les boutons du panneau de débogage permettent d'amener un testeur au seuil des 500 en une minute.
+Les mêmes valeurs sont dans la sauvegarde (`localStorage`, clé `syndicat.save.v1`, champs `metrics` et `decisions`). Les boutons du panneau permettent d'amener un testeur au seuil des 500 en une minute.
+
+Premier playtest (auteur, qui connaît le twist) : acte I en 44 min ; Cadence abordable dès son apparition, première lecture à +17 s, premier achat à +34 s ; ensuite dix Cadences et toutes les revendications accordées ; R ≈ 49 à 1 h 17. Ce résultat a motivé le témoin Atelier, la revendication de Sabine déclenchée par la deuxième Cadence, et des intervalles raccourcis d'un tiers.
 
 ## Structure
 
@@ -70,6 +72,7 @@ Valeurs de première passe retunées sur simulateur (le doc les annonce « à re
 Autres choix d'implémentation :
 
 - **Céder** : la pénalité de rendement est permanente ; le gain de Rapport pèse 0,7 puis s'estompe (0,1 à vingt minutes), et il met une minute à se faire sentir. **Refuser** : −6 de Rapport qui décroît vers 0,4, +8 de Tension. **Négocier** : il faut ouvrir le dossier (ce que la personne accepterait), puis tenir une réunion de 45 s pendant laquelle la production est à zéro ; résultat intermédiaire.
+- La revendication de Sabine sur la cadence arrive en réaction à la deuxième Cadence, dans les deux minutes (ou dès que la table est libre) ; les autres sont tirées au sort selon l'état.
 - Une revendication sans réponse charge la Tension (+0,5/min). Refuser est toujours possible, jamais gratuit (I4) ; ignorer non plus.
 - La Tension est affichée et évolue selon la règle n°3, mais **rien ne se passe à 100** : la grève n'est pas dans le MVP. Le journal le dit en une ligne.
 - Le bandeau du bas affiche la Population en clair, toujours (I3) ; les Pièces passent en notation scientifique au-delà de 10⁹ (garde-fou, l'acte III n'existe pas).

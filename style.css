@@ -161,8 +161,21 @@ dialog li { margin-bottom: .5rem; }
 dialog button { padding: .5rem 1rem; background: var(--paper-2); border: 1px solid var(--ink); cursor: pointer; }
 
 .debug {
-  position: fixed; top: .5rem; right: .5rem; z-index: 10;
-  background: #fff; border: 1px solid var(--ink); padding: .5rem .75rem;
-  font-size: .8rem; max-width: 22rem; white-space: pre-wrap;
+  position: fixed; left: .5rem; bottom: 7.5rem; z-index: 10; /* par défaut sous la courbe, où il n'y a pas de texte ; ancré en bas pour grandir vers le haut */
+  background: #fff; border: 1px solid var(--ink);
+  font-size: .8rem; width: 26rem; max-width: 95vw;
+  box-shadow: 0 2px 8px rgba(28, 27, 24, .15);
 }
-.debug button { margin: .2rem .2rem 0 0; font-size: .8rem; }
+.debug-bar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: .3rem .6rem; background: var(--paper-2); border-bottom: 1px solid var(--line);
+  cursor: move; user-select: none; touch-action: none;
+}
+.debug-title { font-weight: 700; }
+.debug-toggle { border: 1px solid var(--line); background: #fff; width: 1.4rem; height: 1.4rem; line-height: 1; cursor: pointer; padding: 0; }
+.debug-body { padding: .5rem .75rem; max-height: 55vh; overflow: auto; }
+.debug.collapsed .debug-body { display: none; }
+.debug.collapsed { width: auto; }
+.debug-text { white-space: pre-wrap; font-variant-numeric: tabular-nums; }
+.debug-actions { margin-top: .4rem; }
+.debug-actions button { margin: .2rem .2rem 0 0; font-size: .8rem; }

@@ -3,7 +3,7 @@ import { GENERATORS } from './constants.js';
 import * as E from './engine.js';
 import { band, BAND_LABEL } from './memory.js';
 import { CLAIM_BY_ID, claimText, objetDe } from './content.js';
-import { fmtPieces, fmtRate, fmtPop, fmtPct, fmtMult, fmtClock } from './format.js';
+import { fmtPieces, fmtRate, fmtPop, fmtPct, fmtMult, fmtClock, fmtDuration } from './format.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -229,29 +229,92 @@ export function showReport(report) {
   if (typeof dlg.showModal === 'function') dlg.showModal();
 }
 
+const DEBUG_POS_KEY = 'syndicat.debug.pos';
+
+function secs(x) {
+  return x == null ? '—' : `${Math.round(x)} s`;
+}
+
 export function renderDebug(state) {
   const box = $('debug');
-  if (box.hidden) return;
+  if (box.hidden || box.classList.contains('collapsed')) return;
   const d = E.rendementDetail(state);
   const h = E.hesitation(state);
-  box.querySelector('.debug-text').textContent =
+  let text =
     `t=${fmtClock(state.t)} act=${state.act} stage=${state.threshold.stage}\n`
     + `R=${d.r.toFixed(2)} f=${d.f.toFixed(3)} conc=${d.conc.toFixed(3)} T=${state.tension.toFixed(1)}\n`
-    + `N=${state.n.toFixed(1)} cap=${E.capacity(state)} mem=${state.memory.length} clock=${state.claims.clock.toFixed(2)}\n`
-    + `pool=${E.eligibleClaims(state).map((c) => c.id).join(',')} done=${state.claims.done.join(',')}\n`
-    + `hésitation: ${h ? JSON.stringify(h) : '—'}`;
+    + `N=${state.n.toFixed(1)} cap=${E.capacity(state)} mem=${state.memory.length} clock=${state.claims.clock.toFixed(2)}`
+    + (state.claims.forced ? ` forcée=${state.claims.forced.id}@${fmtClock(state.claims.forced.at)}` : '') + '\n'
+    + `pool=${E.eligibleClaims(state).map((c) => c.id).join(',')} done=${state.claims.done.join(',')}\n`;
+  if (h) {
+    text += `\nHésitation (Cadence, à ${fmtClock(h.unlockedAt)}) :\n`
+      + `  abordable → 1er survol : ${secs(h.cadence.firstHoverAt == null ? null : h.cadence.firstHoverAt - h.cadence.affordableAt)}, survols avant achat : ${h.cadence.hoverCount}\n`
+      + `  abordable → 1er achat  : ${secs(h.cadence.seconds)}\n`
+      + `  témoin Atelier         : ${secs(h.atelier.seconds)}${h.atelier.affordableAt == null ? ' (pas encore abordable)' : ''}\n`;
+  } else {
+    text += '\nHésitation : — (avant les 500)\n';
+  }
+  if (state.decisions.length) {
+    text += '\nDécisions (temps de réponse) :\n';
+    for (const dec of state.decisions) text += `  ${fmtClock(dec.t)}  ${dec.claimId} → ${dec.choice}, après ${fmtDuration(dec.waited)}\n`;
+  }
+  if (state.claims.current) text += `\nEn attente : ${state.claims.current.id} depuis ${fmtDuration(state.t - state.claims.current.arrivedAt)}\n`;
+  box.querySelector('.debug-text').textContent = text;
 }
 
 export function initDebug(handlers) {
   const box = $('debug');
   box.hidden = false;
-  box.innerHTML = `<div class="debug-text"></div>
+  box.innerHTML = `<div class="debug-bar"><span class="debug-title">Mesures du prototype</span><button type="button" class="debug-toggle" title="Replier">−</button></div>
+    <div class="debug-body">
+    <div class="debug-text"></div>
+    <div class="debug-actions">
     <button type="button" data-d="pieces">+10 000 pièces</button>
     <button type="button" data-d="n490">N → 490</button>
     <button type="button" data-d="skip">+5 min</button>
-    <button type="button" data-d="offline">Absence 8 h</button>`;
+    <button type="button" data-d="offline">Absence 8 h</button>
+    </div></div>`;
   box.addEventListener('click', (ev) => {
     const b = ev.target.closest('button[data-d]');
     if (b) handlers.onDebug(b.dataset.d);
   });
+  box.querySelector('.debug-toggle').addEventListener('click', (ev) => {
+    ev.stopPropagation();
+    const collapsed = box.classList.toggle('collapsed');
+    ev.currentTarget.textContent = collapsed ? '+' : '−';
+    ev.currentTarget.title = collapsed ? 'Déplier' : 'Replier';
+  });
+
+  // Position mémorisée ; par défaut en bas à gauche, sous la courbe, où il n'y a pas de texte.
+  let pos = null;
+  try { pos = JSON.parse(localStorage.getItem(DEBUG_POS_KEY)); } catch { /* ignore */ }
+  if (pos) place(box, pos.x, pos.y); // sinon la position CSS par défaut, ancrée en bas
+
+  // Déplaçable par sa barre de titre.
+  const bar = box.querySelector('.debug-bar');
+  let drag = null;
+  bar.addEventListener('pointerdown', (ev) => {
+    if (ev.target.closest('button')) return;
+    drag = { dx: ev.clientX - box.offsetLeft, dy: ev.clientY - box.offsetTop };
+    bar.setPointerCapture(ev.pointerId);
+  });
+  bar.addEventListener('pointermove', (ev) => {
+    if (!drag) return;
+    place(box, ev.clientX - drag.dx, ev.clientY - drag.dy);
+  });
+  const stop = () => {
+    if (!drag) return;
+    drag = null;
+    try { localStorage.setItem(DEBUG_POS_KEY, JSON.stringify({ x: box.offsetLeft, y: box.offsetTop })); } catch { /* ignore */ }
+  };
+  bar.addEventListener('pointerup', stop);
+  bar.addEventListener('pointercancel', stop);
+}
+
+function place(box, x, y) {
+  const maxX = Math.max(0, window.innerWidth - box.offsetWidth);
+  const maxY = Math.max(0, window.innerHeight - 40); // la barre reste toujours attrapable
+  box.style.left = `${Math.min(maxX, Math.max(0, x))}px`;
+  box.style.top = `${Math.min(maxY, Math.max(0, y))}px`;
+  box.style.bottom = 'auto';
 }

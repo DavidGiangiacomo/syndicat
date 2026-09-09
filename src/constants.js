@@ -41,7 +41,9 @@ export const T_NEGOCIE = 2;
 export const T_CEDE = -5;
 
 // Revendications
-export const CLAIM_INTERVAL = { calme: 480, frictions: 240, conflit: 120 }; // secondes
+export const CLAIM_INTERVAL = { calme: 320, frictions: 160, conflit: 80 }; // secondes (raccourcis d'un tiers après le premier playtest)
+export const CADENCE_CLAIM_AFTER = 2;  // la revendication de Sabine arrive en réaction à la 2e Cadence…
+export const CADENCE_CLAIM_DELAY = [60, 120]; // … dans les deux minutes
 export const MEETING_DURATION = 45;    // négocier coûte du temps réel : la production s'arrête
 
 // Actes

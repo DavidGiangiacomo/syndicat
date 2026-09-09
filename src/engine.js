@@ -38,7 +38,7 @@ export function createState(seed = (Date.now() & 0x7fffffff)) {
     memory: [],             // { type, amount, t, ref }
     decisions: [],          // le procès-verbal : { t, claimId, choice, demanded, granted }
     tension: 0,
-    claims: { done: [], current: null, clock: 0 },
+    claims: { done: [], current: null, clock: 0, forced: null }, // forced : { id, at }
     meeting: null,          // { claimId, until }
     journal: [],            // { t, text, kind }
     rumor: null,            // { text, until }
@@ -48,7 +48,8 @@ export function createState(seed = (Date.now() & 0x7fffffff)) {
     metrics: {
       cadenceUnlockedAt: null, cadenceAffordableAt: null,
       cadenceFirstHoverAt: null, cadenceFirstBuyAt: null,
-      cadenceHoverCount: 0,
+      cadenceHoverCount: 0,                                   // survols avant le premier achat seulement
+      atelierAffordableAt: null, atelierFirstBuyAt: null,      // témoin : même moment, aucun coût moral
     },
     history: [],            // [t, prodPerSec] toutes les 5 s
     historyAt: 0,
@@ -143,11 +144,13 @@ export function buy(state, id) {
     case 'cadence': {
       state.memory.push({ type: 'cadence', amount: C.CADENCE_R, t: state.t, ref: state.bought.cadence });
       if (state.metrics.cadenceFirstBuyAt == null) state.metrics.cadenceFirstBuyAt = state.t;
+      if (state.bought.cadence === C.CADENCE_CLAIM_AFTER) scheduleClaim(state, 'cadence', C.CADENCE_CLAIM_DELAY);
       const k = state.bought.cadence - 1;
       log(state, k < CADENCE_LINES.length ? CADENCE_LINES[k] : pick(state, CADENCE_LINES_MORE));
       break;
     }
     case 'atelier': {
+      if (state.metrics.atelierFirstBuyAt == null) state.metrics.atelierFirstBuyAt = state.t;
       const k = state.bought.atelier - 1;
       log(state, k < ATELIER_LINES.length ? ATELIER_LINES[k] : pick(state, ATELIER_LINES_MORE));
       break;
@@ -159,7 +162,7 @@ export function buy(state, id) {
 }
 
 export function markCadenceHover(state) {
-  if (state.act < 2) return;
+  if (state.act < 2 || state.metrics.cadenceFirstBuyAt != null) return;
   state.metrics.cadenceHoverCount++;
   if (state.metrics.cadenceFirstHoverAt == null) state.metrics.cadenceFirstHoverAt = state.t;
 }
@@ -175,6 +178,13 @@ export function eligibleClaims(state) {
     }
     return true;
   });
+}
+
+// Une revendication en réaction à un événement : elle arrive dans le délai donné,
+// ou dès que la table est libre si une autre est en cours.
+function scheduleClaim(state, id, [min, max]) {
+  if (state.claims.done.includes(id) || state.claims.current?.id === id || state.claims.forced) return;
+  state.claims.forced = { id, at: state.t + min + rand(state) * (max - min) };
 }
 
 function presentClaim(state, id) {
@@ -325,9 +335,17 @@ function social(state, dt, before) {
     state.rumor = null;
   }
 
+  // Revendication en réaction à un événement
+  const forced = state.claims.forced;
+  if (forced && state.t >= forced.at && !state.claims.current && !state.meeting
+      && state.threshold.stage >= C.THRESHOLD_STAGES.length) {
+    state.claims.forced = null;
+    if (!state.claims.done.includes(forced.id)) presentClaim(state, forced.id);
+  }
+
   // Tirage des revendications, une fois la première (scénarisée) passée
   if (state.threshold.stage >= C.THRESHOLD_STAGES.length && !state.claims.current && !state.meeting) {
-    const pool = eligibleClaims(state);
+    const pool = eligibleClaims(state).filter((c) => c.id !== state.claims.forced?.id);
     if (pool.length > 0) {
       const rate = (1 / C.CLAIM_INTERVAL[b]) * (1 + state.tension / 100);
       state.claims.clock += rate * dt;
@@ -335,9 +353,12 @@ function social(state, dt, before) {
     }
   }
 
-  // Mesure du prototype : quand la Cadence devient abordable
+  // Mesures du prototype : quand la Cadence, et son témoin l'Atelier, deviennent abordables
   if (state.metrics.cadenceAffordableAt == null && state.pieces >= cost(state, 'cadence')) {
     state.metrics.cadenceAffordableAt = state.t;
+  }
+  if (state.metrics.atelierAffordableAt == null && state.pieces >= cost(state, 'atelier')) {
+    state.metrics.atelierAffordableAt = state.t;
   }
 
   // Jalons de population
@@ -429,15 +450,23 @@ export function offlineReport(state, snap, elapsed) {
 // ---------- Débogage / mesures du prototype ----------
 export function hesitation(state) {
   const m = state.metrics;
-  const from = m.cadenceAffordableAt ?? m.cadenceUnlockedAt;
-  if (from == null) return null;
+  if (m.cadenceUnlockedAt == null) return null;
+  const delay = (affordable, bought) => (affordable == null || bought == null ? null : bought - affordable);
   return {
     unlockedAt: m.cadenceUnlockedAt,
-    affordableAt: m.cadenceAffordableAt,
-    firstHoverAt: m.cadenceFirstHoverAt,
-    firstBuyAt: m.cadenceFirstBuyAt,
-    hoverCount: m.cadenceHoverCount,
-    // temps d'hésitation : entre le moment où la Cadence est abordable et le premier achat
-    seconds: m.cadenceFirstBuyAt == null ? null : m.cadenceFirstBuyAt - from,
+    cadence: {
+      affordableAt: m.cadenceAffordableAt,
+      firstHoverAt: m.cadenceFirstHoverAt,
+      firstBuyAt: m.cadenceFirstBuyAt,
+      hoverCount: m.cadenceHoverCount,
+      // temps d'hésitation : entre le moment où la Cadence est abordable et le premier achat
+      seconds: delay(m.cadenceAffordableAt, m.cadenceFirstBuyAt),
+    },
+    // témoin : l'Atelier apparaît au même moment, sans coût de Rapport
+    atelier: {
+      affordableAt: m.atelierAffordableAt,
+      firstBuyAt: m.atelierFirstBuyAt,
+      seconds: delay(m.atelierAffordableAt, m.atelierFirstBuyAt),
+    },
   };
 }
