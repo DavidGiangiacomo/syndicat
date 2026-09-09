@@ -1,0 +1,13 @@
+{
+  "name": "syndicat",
+  "version": "0.1.0",
+  "description": "Syndicat — prototype (MVP actes I et II) d'un incrémental où optimiser quelqu'un finit par poser problème.",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "node tools/serve.mjs",
+    "test": "node --test test/*.test.js",
+    "sim": "node tools/sim.mjs"
+  },
+  "license": "UNLICENSED"
+}
